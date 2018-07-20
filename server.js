@@ -6,27 +6,29 @@ const HOST = '0.0.0.0';
 let userList = [];
 
 const server = net.createServer(function (socket) {
-  socket.setEncoding('utf8');
+
+  userList.push(socket);
   console.log('Client online');
 
-  socket.on('connect', function () {
-    userList.push(socket);
-    console.log(userList);
+  socket.on('end', function () {
+    let exitingUser = userList.indexOf(socket);
+    userList.splice(exitingUser, 1);
+    console.log('Client logout');
   })
 
-  socket.on('end', function(){
-    console.log('Server terminated');
+  socket.on('data', function (data) {
+    broadcast(data, socket);
+    console.log(data.toString().trim());
   })
 
-  socket.on('data', function(data) {
-    let trimmedData = data.toString().trim();
-    console.log(trimmedData);
-    socket.pipe(socket);
-  });
-
-  socket.on('connect', function() {
-    process.stdout.pipe(server);
-  })
+  function broadcast(message, sender) {
+    userList.forEach(user => {
+      if (user !== sender) {
+        user.write(message);
+        process.stdout.write(message);
+      }
+    })
+  }
 });
 
 server.listen(PORT, HOST, () => {
